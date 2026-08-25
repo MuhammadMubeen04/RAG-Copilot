@@ -1,22 +1,123 @@
-# RAG Copilot with Hybrid Search & Reranking
- 
-A modular, framework-free Retrieval-Augmented Generation (RAG) system built in Python, combining dense and sparse retrieval with cross-encoder reranking to address precision failures common in naive vector search.
- 
-## Overview
- 
-Most basic RAG implementations rely on dense vector similarity alone, which struggles with exact keyword matches, jargon, and short factual queries. This project addresses that with a two-stage retrieval pipeline: hybrid search (dense + sparse) to widen the candidate pool, followed by cross-encoder reranking to select the most relevant chunks before they reach the LLM.
- 
-Built directly on core APIs rather than a framework like LangChain, to keep full control over how retrieval, ranking, and generation are wired together.
- 
-## Key Features
- 
-- **Framework-free architecture** — no LangChain or similar abstraction layer; retrieval logic is explicit and inspectable end to end
-- **Hybrid search retrieval** — combines dense vector search (ChromaDB + `all-MiniLM-L6-v2`) with sparse keyword search (BM25) to catch both semantic intent and exact terminology
-- **Two-stage cross-encoder reranking** — over-fetches candidates from hybrid search, then reranks with `cross-encoder/ms-marco-MiniLM-L-6-v2` before passing context to the LLM
-- **Fast generation** — powered by the Groq API running `llama-3.1-8b-instant`
-- **Interactive UI** — Streamlit dashboard with real-time source chunk highlighting and latency tracing
-## Architecture
- 
+# 🤖 RAG Copilot – Hybrid Search & Reranking
+
+A modular, framework-free **Retrieval-Augmented Generation (RAG)** system that combines dense vector search and sparse keyword search with cross-encoder reranking to deliver accurate, context-aware answers from PDF documents.
+
+---
+
+## 📌 Project Overview
+
+Most basic RAG systems rely only on dense vector similarity, which often fails on exact keywords, technical jargon, and short factual queries.  
+
+This project solves that problem with a **two-stage retrieval pipeline**:
+
+**Hybrid Search (Dense + BM25) → Cross-Encoder Reranking → LLM Generation**
+
+The entire pipeline is built directly on core libraries (no LangChain abstraction) for full transparency and control.
+
+---
+
+## 🛠️ Tools & Technologies
+
+- **Python** – Core language
+- **ChromaDB** – Dense vector store
+- **sentence-transformers** – Embeddings (`all-MiniLM-L6-v2`) & Cross-Encoder reranker
+- **rank-bm25** – Sparse keyword search (BM25)
+- **PyMuPDF** – PDF text extraction
+- **Groq API** – Fast LLM inference (`openai/gpt-oss-20b`)
+- **Streamlit** – Interactive web interface
+- **python-dotenv** – Environment variable management
+
+---
+
+## ✨ Key Features
+
+- Framework-free architecture (no LangChain)
+- Hybrid retrieval (Dense vectors + BM25)
+- Two-stage Cross-Encoder reranking for higher precision
+- Sliding window text chunking with adjustable overlap
+- Real-time source citation highlighting
+- Retrieval latency tracking
+- Clean Streamlit UI with PDF upload
+- Modular and easy-to-extend codebase
+
+---
+
+## 🧠 Why Hybrid Search + Reranking?
+
+- Dense-only retrieval often misses exact keyword matches
+- BM25 catches precise terms and jargon
+- Combining both increases **recall**
+- Cross-encoder reranking improves **precision** by jointly scoring query + chunk
+- Final top chunks are much more relevant before being sent to the LLM
+
+---
+
+## 📁 Project Structure
+
+```
+rag-copilot/
+├── src/
+│   ├── ingester.py          # PDF → text extraction
+│   ├── chunker.py           # Sliding window chunking
+│   ├── vector_store.py      # ChromaDB dense store
+│   ├── sparse_search.py     # BM25 sparse retriever
+│   ├── hybrid_retriever.py  # Hybrid + Reranking logic
+│   ├── reranker.py          # Cross-encoder
+│   ├── generator.py         # Groq LLM
+│   ├── evaluator.py         # Optional RAGAS evaluation
+│   └── logger.py            # Observability
+├── streamlit_app.py         # Main interactive UI
+├── app.py                   # CLI version
+├── requirements.txt
+├── .gitignore
+└── README.md
+```
+
+---
+
+## 🚀 How to Run the Project
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/YOUR_USERNAME/rag-copilot.git
+cd rag-copilot
+```
+
+### 2. Create virtual environment
+```bash
+python -m venv venv
+
+# Windows
+venv\Scripts\activate
+
+# Mac/Linux
+source venv/bin/activate
+```
+
+### 3. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Add your Groq API Key
+Create a `.env` file in the root folder:
+```
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+### 5. Run the Streamlit App
+```bash
+streamlit run streamlit_app.py
+```
+
+- Upload any PDF from the sidebar  
+- Ask questions about the document  
+- View answers + source chunks with latency
+
+---
+
+## 📊 Architecture
+
 ```
 [PDF Document]
       │
@@ -26,70 +127,45 @@ Built directly on core APIs rather than a framework like LangChain, to keep full
       ▼
 [Sliding Window Chunker]
       │
-      ├───► [Dense Vector Index (ChromaDB)]  ──┐
-      │                                        ├──► [Candidate Pool (top-10)]
-      └───► [Sparse Keyword Index (BM25)]    ──┘                 │
-                                                                  ▼
-                                                   [Cross-Encoder Reranker]
-                                                                  │
-                                                                  ▼
-                                                    [Top 3 Reranked Contexts]
-                                                                  │
-                                                                  ▼
-                                                    [Groq Llama 3.1 8B LLM]
-                                                                  │
-                                                                  ▼
-                                                     [Answer + Citations UI]
+      ├──► [Dense Vector Index (ChromaDB)]  ──┐
+      │                                        ├──► [Candidate Pool]
+      └──► [Sparse Keyword Index (BM25)]     ──┘
+                                                  │
+                                                  ▼
+                                   [Cross-Encoder Reranker]
+                                                  │
+                                                  ▼
+                                   [Top-K Reranked Contexts]
+                                                  │
+                                                  ▼
+                                   [Groq LLM (openai/gpt-oss-20b)]
+                                                  │
+                                                  ▼
+                                   [Answer + Citations UI]
 ```
- 
-## Why Hybrid Search + Reranking
- 
-- **Dense-only retrieval** misses exact keyword and jargon matches that don't cluster well in embedding space — a common failure mode for technical or domain-specific documents.
-- **BM25** catches those exact-term matches, so combining it with dense search widens recall before anything gets filtered out.
-- **Cross-encoder reranking** scores the query against each candidate chunk jointly (rather than comparing precomputed embeddings), which is more accurate than raising `top-k` alone — reranking fixes precision *after* recall, rather than just returning more unranked chunks and hoping the LLM sorts it out.
-## Tech Stack
- 
-- **Retrieval:** ChromaDB, `all-MiniLM-L6-v2`, BM25, `cross-encoder/ms-marco-MiniLM-L-6-v2`
-- **Extraction:** PyMuPDF
-- **LLM:** Groq API (`llama-3.1-8b-instant`)
-- **UI:** Streamlit
-## Setup
- 
-```bash
-git clone https://github.com/hassan-khalid234/rag-copilot.git
-cd rag-copilot
-pip install -r requirements.txt
-```
- 
-Add your Groq API key to a `.env` file:
-```
-GROQ_API_KEY=your_key_here
-```
- 
-## Usage
- 
-1. Place your PDF document(s) in the `data/` folder 
-2. Run the ingestion step to build the dense and sparse indexes
-3. Launch the app:
-```bash
-streamlit run streamlit_app.py
-```
- 
- 
-## Project Structure
- 
-```
-├── data/                   # source PDFs
-├── src/                # hybrid search + reranking logic
-├── streamlit_app.py
-├── requirements.txt
-└── .env.example
-```
- 
-## Status
- 
-Actively developed as a personal project exploring production-grade retrieval techniques beyond naive vector search.
- 
-## Author
- 
-Muhammad Hassan — [LinkedIn](https://www.linkedin.com/in/hassan-khalid-4028842a1/)
+
+---
+
+## 🖼️ Screenshots
+
+*(Add your screenshots here later)*
+
+- Streamlit UI with PDF upload  
+- Answer + Source Citations  
+- Retrieval latency display  
+
+---
+
+## 👤 Author
+
+**Mubeen Salman**  
+Aspiring Data Analyst 
+
+- LinkedIn: [https://www.linkedin.com/in/mubeen-salman-459776364/]  
+- GitHub: [https://github.com/MuhammadMubeen04]  
+
+---
+
+## 📄 License
+
+This project is for educational and portfolio purposes.
