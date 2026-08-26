@@ -148,11 +148,14 @@ streamlit run streamlit_app.py
 
 ## 🖼️ Screenshots
 
-*(Add your screenshots here later)*
+### Main Interface
+![Streamlit UI](images/01_main_ui.png)
 
-- Streamlit UI with PDF upload  
-- Answer + Source Citations  
-- Retrieval latency display  
+### Answer + Source Citations
+![Answer and Citations](images/02_answer_and_citations.png)
+
+### Retrieval Latency
+![Latency](images/03_retrieval_latency.png)
 
 ---
 
